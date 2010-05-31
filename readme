@@ -1,0 +1,239 @@
+Sorry for the long delay in posting anything, but work has been crazy busy of the past month.
+
+Anyway, following on from the last post about helpers in Sinatra, I thought I'd post an example that mimics partials as found in Rails. Partials are small pieces of template code that allow you to break your views up into smaller chunks. The main difference from views is that they get rendered inside a view and so you don't want the layout rendered again. A partial can accept local variables so they are not always identical. They can save you a lot of time when you want to use the same piece of view code repeatedly, for example, you could create a product partial to display differnt products in a catalouge.
+
+Easy Partials
+---------------
+An easy way to create partials is to just use the following helper method:
+
+helpers do
+
+def partial template
+  erb template, :layout => false
+end
+
+end
+
+This is basically using the same mechanism that is used to render views (The erb method), but setting the layout option to false so that the layout is not rendered again. This is a very simple and quick method.
+
+Intermediate Partials
+-----------------------
+The easy partial is all well and good, but it doesn't do too much except for display a view within a view. Let's make it a bit more like the Rails implementation. The first thing to do is to use the Rails convention of placing and underscore before all partial filenames to differentiate them from the standard views. The next is to allow you to insert local variables into the partial code. For example, you might have a shop partial that refers to the shop's name.
+
+<%= partial :shop,{:name => 'Ikea'} %>
+
+Rails has convention that if the local variable name is the same as the name of the partial, then it doesn't need to be explicity set.
+
+<%= partial :shop,'Ikea' %>
+
+This would set a local variable of 'shop' to 'Ikea'
+
+
+Advanced Partials
+---------------------
+
+The intermediate partials helper is pretty good, and works well in most situations, but now, we're going to take it up another notch. First of all to allow an array of local variables to be passed like so:
+
+<%= partial :shop,["ikea","tesco","footlocker"] %>
+
+The other thing that is useful for partials is to be able to pass them a whole object (probably one that has just been extracted from a database) and then to render a partial that has access to that object. For example, say you have a person object, with 'name' and 'age' attributes. You could create a `_person.erb` file that contained information about that person.
+
+My name is <%= person.name %> and I am <%= person.age %> years old.
+
+Then create a new person:
+
+@person = Person.new(:name=>'DAZ',:age=>32)
+
+The following code would render the person partial and set the local person variable to be @person.
+
+<%= partial @person %>
+
+This would output the following view code:
+
+My name is DAZ and I am 32 years old.
+
+Would render the _person.erb partial template file.
+
+helpers do
+
+def partial(template,locals=nil)
+  if template.is_a?(String) || template.is_a?(Symbol)
+    template=('_' + template.to_s).to_sym
+  else
+    locals=template
+    template=template.is_a?(Array) ? ('_' + template.first.class.to_s.downcase).to_sym : ('_' + template.class.to_s.downcase).to_sym
+  end
+  if locals.is_a?(Hash)
+    erb(template,{:layout => false},locals)      
+  elsif locals
+    locals=[locals] unless locals.respond_to?(:inject)
+    locals.inject([]) do |output,element|
+      output << erb(template,{:layout=>false},{template.to_s.delete("_").to_sym => element})
+    end.join("\n")
+  else 
+    erb(template,{:layout => false})
+  end
+end
+
+end
+
+e.g. 
+
+You can also pass an array 
+e.g. 
+partial :shop,["ikea","tesco","footlocker"] 
+will render the '_shop.erb' template 3 times, passing the 3 shops into 
+the local variable shop each time. 
+If you have local variable that is not the same name as the template 
+name, then just pass a hash: 
+e.g. 
+render_partial :shop,{ :owner => 'Bob', :city => 'Man' } 
+will render the '_shop.erb' template and set the local variable owner 
+to 'Bob' and the local variable city to 'Man'. 
+
+
+render_partial @shop 
+This will render the '_shop.erb' partial and set the local variable 
+shop=@shop 
+You can also do: Sorry for the long delay in posting anything, but work has been crazy busy of the past month.
+
+Anyway, following on from the last post about helpers in Sinatra, I thought I'd post an example that mimics [partials in Rails](http://rails.rubyonrails.org/classes/ActionView/Partials.html). Partials are small pieces of template code that allow you to break your views up into smaller chunks. The main difference from normal views is that the layout doesn't get rendered again. A partial can contain local variables, allowing for them to be reused with different values. They can save you a lot of time when you want to use the same piece of view code repeatedly.
+
+Easy Partials
+---------------
+An easy way to create partials is to just use the following helper method:
+
+    helpers do
+    
+    def partial template
+      erb template, :layout => false
+    end
+    
+    end
+
+This basically uses the same mechanism that is used to render views (The `erb` method), but setting the layout option to false so that the layout is not rendered again. Example usage might be if you wanted to write some information about shops. You could create a partial called `shop.erb` that contained the following code:
+
+    <h3>Shop Partial</h3>
+    <h4>The shop is called Ikea</p>
+
+Then inside the main view you would use this method to call that code:
+
+    <%= partial :shop %>
+
+This is a very simple and quick method that allows you to break your view code up into smaller chunks that can be displayed within views, but it isn't very versatile.
+
+Intermediate Partials
+-----------------------
+I'm going to try and improve the partial helper method by making it more like the Rails implementation. The first thing I want to do is use the Rails convention of placing an underscore before all partial filenames to differentiate them from the standard views. The other thing I want to do is to allow local variables to be inserted into the partial code. 
+
+    helpers do
+    
+    def int_partial(template,locals=nil)
+      locals = locals.is_a?(Hash) ? locals : {template.to_sym =>         locals}
+      template=('_' + template.to_s).to_sym
+      erb(template,{:layout => false},locals)      
+    end
+    
+    end
+
+To use this partial helper, you would have to create a file called `_shop.erb` that referred to the name of the shop as a variable:
+
+    <h3>Shop Partial</h3>
+    <h4>The shop is called <%= name %></p>
+
+You would then call the partial helper like so:
+
+    <%= partial :shop,{:name => 'Ikea'} %>
+
+Rails has convention that if the local variable name is the same as the name of the partial, then it doesn't need to be explicity set. So if the `_shop.erb' file is changed so that the variable is called 'shop' rather than 'name':
+
+
+    <h3>Shop Partial</h3>
+    <h4>The shop is called <%= shop %></p>
+
+Now it can be called with the shorter code like below:
+
+    <%= partial :shop,'Ikea' %>
+
+This is a big improvement on the easy partial code and makes the partials much more versatile by adding the use of local variables.
+
+Advanced Partials
+---------------------
+The intermediate partials helper is pretty good, and works well in most situations, but now, we're I want to take it up another notch and allow arrays and even whole objects to be passed to it as arguments. The code is a bit longer this time:
+
+    helpers do
+    
+    def partial(template,locals=nil)
+      if template.is_a?(String) || template.is_a?(Symbol)
+        template=('_' + template.to_s).to_sym
+      else
+        locals=template
+        template=template.is_a?(Array) ? ('_' + template.first.class.to_s.downcase).to_sym : ('_' + template.class.to_s.downcase).to_sym
+      end
+      if locals.is_a?(Hash)
+        erb(template,{:layout => false},locals)      
+      elsif locals
+        locals=[locals] unless locals.respond_to?(:inject)
+        locals.inject([]) do |output,element|
+          output <<     erb(template,{:layout=>false},{template.to_s.delete("_").to_sym => element})
+        end.join("\n")
+      else 
+        erb(template,{:layout => false})
+      end
+    end
+    
+    end
+
+
+To use this partial, you would use the same `_shop.erb` template as before. Now you can pass an array of shop names to it like so:
+
+    <%= partial :shop,["Ikea","Tesco","Footlocker"] %>
+
+This will render the `_shop.erb` template 3 times, but changing the name each time.
+
+The other thing that is useful for partials is to be able to pass them a whole object (probably one that has just been extracted from a database) and then to render a partial that has access to that object. For example, say you have a person object, with 'name' and 'age' attributes. You could create a `_person.erb` file that contained information about that person.
+
+    My name is <%= person.name %> and I am <%= person.age %> years old.
+
+Then create a new person (note that you'd need to have some sort of Person class set up, possible with a database to store them in too):
+
+    @person = Person.new(:name=>'DAZ',:age=>32)
+
+The following code would render the person partial and set the local person variable to be @person.
+
+    <%= partial @person %>
+
+This would output the following view code:
+
+    My name is DAZ and I am 32 years old.
+
+You can also pass an array of objects. For example, say you have an array of Person objects called `@satc` that you have just pulled from your database, then you could call this code:
+
+    <%= partial @satc %>
+
+And you'd get the following output:
+
+    My name is Carrie and I am 45 years old.
+    My name is Charlotte and I am 45 years old.
+    My name is Miranda and I am 45 years old.
+    My name is Samantha and I am 52 years old.
+
+Cool. It doesn't quite do all the same things that Rails partials do, but it does do most of the stuff that you'd want to do with partials in a relatively small amount of code. There is a fair amount going on in the code and some fairly (for me anyway) complex Ruby in places. 
+
+Feel free to use any of these helpers and if you can find any problems with them or come up with any improvements or want to know how any of it works then let me know in the comments.
+
+I've put a [working example with all the code on github](http://github.com/daz4126/I-Did-It-My-Way-Partials).
+
+
+render_partial @shops 
+This will render a partial for each shop object in the @shops array 
+and pass each shop object into the local variable called shop. 
+
+How Does it work?
+---------------------
+The first thing it does is check that the template name that has been entered is a string or symbol and if it is, just adds an underscore to the front. If not then it must have been passed an object or array of objects. If this is the case then the local variable is set to be that object. The name of the template is then extracted by getting the class name of the object.
+
+Now the filname has been set, the code goes on to sort out the local variables. First it checks if the user has entered a hash of manually entered locals. If not then it sets the local variable to have the same name as the class and be equal to the object itself. Finally if not locals were set then the template is just rendered without any local variables.
+
+
+
